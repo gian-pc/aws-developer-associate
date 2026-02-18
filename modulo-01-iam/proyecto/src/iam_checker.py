@@ -38,11 +38,15 @@ class IamChecker:
         inactive_console = self._check_inactive_console_users(users)
         print(f"  ✓ Usuarios inactivos con acceso a consola: {len(inactive_console)}")
 
+        root_mfa = self.check_root_mfa()
+        print(f"  ✓ MFA en cuenta root: {'✅ Sí' if root_mfa else '🔴 NO — CRÍTICO'}")
+
         return {
             'total_users': len(users),
             'users_without_mfa': users_without_mfa,
             'old_access_keys': old_keys,
             'inactive_console_users': inactive_console,
+            'root_mfa_enabled': root_mfa,
         }
 
     def _list_all_users(self) -> list:
@@ -168,3 +172,12 @@ class IamChecker:
             if e.response['Error']['Code'] == 'NoSuchEntity':
                 return False
             raise
+    
+    def check_root_mfa(self) -> bool:
+        """
+        Verifica si la cuenta ROOT tiene MFA habilitado.
+        El root es el mayor riesgo de seguridad en AWS.
+        """
+        response = self.iam.get_account_summary()
+        root_mfa = response['SummaryMap'].get('AccountMFAEnabled', 0)
+        return root_mfa == 1
